@@ -42,6 +42,9 @@ for it=1:max_iter
     for i =1:swarm_size %update particles
         swarm(i)=swarm(i).update(wc,c,pc,leader,objective,constraint);
     end
+    for i=1:swarm_size
+        swarm(i) = swarm(i).updateDomination(swarm,i);
+    end
     REP = REP.update(swarm);
     figure(1)
     PlotCosts(swarm,REP.swarm)
