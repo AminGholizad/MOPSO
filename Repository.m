@@ -26,8 +26,8 @@ classdef Repository
         end
         function Grid = grid(obj)
             C = cell2mat({obj.swarm.cost}');
-            cmin = min(C,[],2);
-            cmax = max(C,[],2);
+            cmin = min(C,[],1);
+            cmax = max(C,[],1);
             dc = cmax - cmin;
             cmin = cmin - obj.alpha * dc;
             cmax = cmax + obj.alpha * dc;
