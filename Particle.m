@@ -125,6 +125,7 @@ classdef Particle
             end
         end
         function obj = updateDomination(obj,swarm,index)
+            obj.isDominated = false;
             for i = 1:length(swarm)
                 if i == index
                     continue
