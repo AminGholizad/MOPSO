@@ -58,16 +58,18 @@ while i<=length(swarm)
         i=i+1;
     end
 end
+LEG = {};
 if ~isempty(swarm)
     pop_costs=cell2mat({swarm.cost}');
     plot(pop_costs(:,1),pop_costs(:,2),'ko')
+    hold on
+    LEG = {'Current SWARM'};
 end
-hold on
 rep_costs=cell2mat({rep.cost}');
 plot(rep_costs(:,1),rep_costs(:,2),'r*')
 xlabel('1^{st} Objective')
 ylabel('2^{nd} Objective')
 grid on
 hold off
-legend({'Current SWARM','REPASITORY'})
+legend([LEG ,'REPASITORY'])
 end
