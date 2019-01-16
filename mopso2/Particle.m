@@ -124,19 +124,21 @@ classdef Particle
                 obj.GridIndex=obj.GridIndex+GridSubIndex(j);
             end
         end
-        function obj = updateDomination(obj,swarm,index)
-            obj.isDominated = false;
-            for i = 1:length(swarm)
-                if i == index
-                    continue
-                end
-                if swarm(i).dominates(obj)
-                    obj.isDominated = true;
-                    break
+    end
+    methods (Static)
+        function swarm = updateDomination(swarm)
+            for index = 1:length(swarm)
+                swarm(index).isDominated = false;
+                for i = 1:length(swarm)
+                    if i == index
+                        continue
+                    end
+                    if swarm(i).dominates(swarm(index))
+                        swarm(index).isDominated = true;
+                        break
+                    end
                 end
             end
         end
-    end
-    methods (Static)
     end
 end
