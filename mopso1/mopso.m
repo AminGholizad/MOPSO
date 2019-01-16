@@ -1,8 +1,6 @@
-function [REP]= mopso(c,iw,max_iter,lower_bound,upper_bound,swarm_size,rep_size,grid_size,alpha,beta,gamma,objective,constraint)
+function [REP]= mopso(c,iw,max_iter,lower_bound,upper_bound,swarm_size,rep_size,grid_size,alpha,beta,gamma,mu,problem)
 %mopso is an implementation of multi objective particle swarm optimization
 %technique for a minimization problem
-%   when called mopso() it solves the provided example or can be edited
-%   here!
 %% initialize parameters
 if nargin==0
     c = [0.1,0.2]; % [cognitive acceleration, social acceleration] coefficients
@@ -17,62 +15,67 @@ if nargin==0
     beta=2; % Leader Selection Pressure
     gamma=2; % Deletion Selection Pressure
     mu=0.1; % Mutation Rate
-    objective=@fitness; % objective function
-    constraint=@constraints; % constraints function
+    problem=@prob; % objective function
 end
 %% initialize particles
+fprintf('Initializing swarm ...\n')
 w = @(it) ((max_iter - it) - (iw(1) - iw(2)))/max_iter + iw(2);
 pm = @(it) (1-(it-1)/(max_iter-1))^(1/mu);
 swarm(1,swarm_size) = Particle();
-for i =1:swarm_size
-    swarm(i)=Particle(lower_bound,upper_bound,objective,constraint);
-    while ~all(swarm(i).isFeasable)
-        swarm(i)=Particle(lower_bound,upper_bound,objective,constraint);
+for i = 1:swarm_size
+    swarm(i)=Particle(lower_bound,upper_bound,problem);
+    retry = 0;
+    while swarm(i).infeasablity > 0 && retry < 100
+        swarm(i)=Particle(lower_bound,upper_bound,problem);
+        retry = retry + 1;
     end
-end
-for i=1:swarm_size
-    swarm(i) = swarm(i).updateDomination(swarm,i);
 end
 REP = Repository(swarm,rep_size,grid_size,alpha,beta,gamma);
 %% Loop
+fprintf('Starting the optimization loop ...\n')
 for it=1:max_iter
     leader = REP.SelectLeader();
     wc = w(it); %current inertia weight
     pc=pm(it); %current mutation rate
     for i =1:swarm_size %update particles
-        swarm(i)=swarm(i).update(wc,c,pc,leader,objective,constraint);
-    end
-    for i=1:swarm_size
-        swarm(i) = swarm(i).updateDomination(swarm,i);
+        swarm(i)=swarm(i).update(wc,c,pc,leader,problem);
     end
     REP = REP.update(swarm);
-    figure(1)
-    PlotCosts(swarm,REP.swarm)
-    drawnow
-    disp(['Iteration ' num2str(it) ': Number of Rep Members = ' num2str(length(REP.swarm))]);
+    Title = sprintf('Iteration %d, Number of Rep Members = %d',it,length(REP.swarm));
+    PlotCosts(swarm,REP.swarm,Title)
+    disp(Title);
 end
 end
-function PlotCosts(swarm,rep)
-i = 1;
-while i<=length(swarm)
-    if isnan(swarm(i).cost)
-        swarm(i)=[];
+function PlotCosts(swarm,rep,Title)
+figure(1)
+feasable_swarm = swarm([swarm.infeasablity]==0);
+infeasable_swarm = swarm([swarm.infeasablity]>0);
+LEG = {};
+if ~isempty(feasable_swarm)
+    swarm_costs=vertcat(feasable_swarm.cost);
+    plot(swarm_costs(:,1),swarm_costs(:,2),'go')
+    hold on
+    LEG = {'Current feasable SWARM'};
+    Title = sprintf([Title '\nfeasable swarm=%d'],length(feasable_swarm));
+end
+if ~isempty(infeasable_swarm)
+    swarm_costs=vertcat(infeasable_swarm.cost);
+    plot(swarm_costs(:,1),swarm_costs(:,2),'ro')
+    hold on
+    LEG = [LEG, 'Current infeasable SWARM'];
+    if contains(Title,newline)
+        Title = sprintf([Title ', infeasable swarm=%d'],length(infeasable_swarm));
     else
-        i=i+1;
+        Title = sprintf([Title '\ninfeasable swarm=%d'],length(infeasable_swarm));
     end
 end
-LEG = {};
-if ~isempty(swarm)
-    pop_costs=cell2mat({swarm.cost}');
-    plot(pop_costs(:,1),pop_costs(:,2),'ko')
-    hold on
-    LEG = {'Current SWARM'};
-end
-rep_costs=cell2mat({rep.cost}');
-plot(rep_costs(:,1),rep_costs(:,2),'r*')
+rep_costs=vertcat(rep.cost);
+plot(rep_costs(:,1),rep_costs(:,2),'b*')
 xlabel('1^{st} Objective')
 ylabel('2^{nd} Objective')
 grid on
 hold off
-legend([LEG ,'REPASITORY'])
+title(Title)
+legend([LEG ,'REPASITORY'],'location','best')
+drawnow
 end

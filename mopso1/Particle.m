@@ -5,14 +5,15 @@ classdef Particle
         u
         v
         cost
-        isFeasable
+        infeasablity
         pBest
         pBestCost
+        pBestinfeasablity
         GridIndex
         isDominated
     end
     methods
-        function obj = Particle(lower,upper,objective,constraint)
+        function obj = Particle(lower,upper,problem)
             if nargin > 0
                 obj.GridIndex = 0;
                 obj.isDominated = false;
@@ -20,28 +21,17 @@ classdef Particle
                 obj.l = lower;
                 obj.u = upper;
                 obj.v = zeros(1,max(length(lower),length(upper)));
-                obj.isFeasable = constraint(obj.x);
-                if all(obj.isFeasable)
-                    obj.cost = objective(obj.x);
-                    obj.pBestCost = obj.cost;
-                    obj.pBest = obj.x;
-                else
-                    obj.cost = NaN;
-                    obj.pBestCost = NaN;
-                    obj.pBest = NaN;
-                end                    
+                [obj.cost, obj.infeasablity] = problem(obj.x);
+                obj.pBest = obj.x;
+                obj.pBestCost = obj.cost;
+                obj.pBestinfeasablity = obj.infeasablity;
             end
         end
-        function obj = update(obj,w,c,pm,gBest,objective,constraint)
+        function obj = update(obj,w,c,pm,gBest,problem)
             obj = obj.updateV(w,c,gBest);
             obj = obj.updateX();
-            obj.isFeasable = constraint(obj.x);
-            if all(obj.isFeasable)
-                obj.cost = objective(obj.x);
-            else
-                obj.cost = NaN;
-            end
-            obj = obj.applyMutatation(pm,objective);
+            [obj.cost, obj.infeasablity] = problem(obj.x);
+            obj = obj.applyMutatation(pm,problem);
             obj = obj.updatePbest();
         end
         function obj = updateV(obj,w,c,gBest)
@@ -53,27 +43,28 @@ classdef Particle
             obj.x = max(min(obj.x+obj.v,obj.u),obj.l);
         end
         function obj = updatePbest(obj)
-            if all(obj.isFeasable)
-                if isnan(obj.pBestCost)
+            if obj.infeasablity == 0
+                if obj.pBestinfeasablity > 0
                     obj.pBest = obj.x;
                     obj.pBestCost = obj.cost;
+                    obj.pBestinfeasablity = obj.infeasablity;
                 elseif all(obj.pBestCost >= obj.cost) && any(obj.pBestCost > obj.cost)
                     obj.pBest = obj.x;
                     obj.pBestCost = obj.cost;
+                    obj.pBestinfeasablity = obj.infeasablity;
                 end
             else
-                if isnan(obj.pBestCost)
-                    if rand<0.5
-                        obj.pBest = obj.x;
-                        obj.pBestCost = obj.cost;
-                    end
+                if obj.pBestinfeasablity >= obj.infeasablity
+                    obj.pBest = obj.x;
+                    obj.pBestCost = obj.cost;
+                    obj.pBestinfeasablity = obj.infeasablity;
                 end
             end
         end
-        function obj = applyMutatation(obj,pm,objective)
+        function obj = applyMutatation(obj,pm,problem)
             if rand<pm
                 X=obj.Mutate(pm);
-                X.cost=objective(X.x);
+                [X.cost,X.infeasablity]=problem(X.x);
                 if X.dominates(obj)
                     obj=X;
                 elseif ~obj.dominates(X)
@@ -92,8 +83,8 @@ classdef Particle
             obj.x(j)=unifrnd(lb,ub);
         end
         function d = dominates(obj,obj1)
-            if all(obj.isFeasable)
-                if all(obj1.isFeasable)
+            if obj.infeasablity == 0
+                if obj1.infeasablity == 0
                     if all(obj.cost <= obj1.cost) &&  any(obj.cost < obj1.cost)
                         d = true;
                     else
@@ -102,9 +93,9 @@ classdef Particle
                 else
                     d = true;
                 end
-            elseif all(obj1.isFeasable)
+            elseif obj1.infeasablity == 0
                 d = false;
-            elseif sum(obj.isFeasable)>=sum(obj1.isFeasable)
+            elseif obj.infeasablity < obj1.infeasablity
                 d = true;
             else
                 d = false;
@@ -124,15 +115,19 @@ classdef Particle
                 obj.GridIndex=obj.GridIndex+GridSubIndex(j);
             end
         end
-        function obj = updateDomination(obj,swarm,index)
-            obj.isDominated = false;
-            for i = 1:length(swarm)
-                if i == index
-                    continue
-                end
-                if swarm(i).dominates(obj)
-                    obj.isDominated = true;
-                    break
+    end
+    methods (Static)
+        function swarm = updateDomination(swarm)
+            for index = 1:length(swarm)
+            swarm(index).isDominated = false;
+                for i = 1:length(swarm)
+                    if i == index
+                        continue
+                    end
+                    if swarm(i).dominates(swarm(index))
+                        swarm(index).isDominated = true;
+                        break
+                    end
                 end
             end
         end
