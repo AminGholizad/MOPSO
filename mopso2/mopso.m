@@ -20,6 +20,7 @@ if nargin==0
     constraint=@constraints; % constraints function
 end
 %% initialize particles
+fprintf('Initializing swarm ...\n')
 w = @(it) ((max_iter - it) - (iw(1) - iw(2)))/max_iter + iw(2);
 pm = @(it) (1-(it-1)/(max_iter-1))^(1/mu);
 swarm(1,swarm_size) = Particle();
@@ -33,6 +34,7 @@ for i =1:swarm_size
 end
 REP = Repository(swarm,rep_size,grid_size,alpha,beta,gamma);
 %% Loop
+fprintf('Starting the optimization loop ...\n')
 for it=1:max_iter
     leader = REP.SelectLeader();
     wc = w(it); %current inertia weight
