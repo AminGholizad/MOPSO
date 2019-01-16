@@ -13,6 +13,7 @@ classdef Repository
         function obj = Repository(swarm,rep_size,grid_size,alpha,beta,gamma)
             if nargin>0
                 obj.rep_size = rep_size;
+                swarm = Particle.updateDomination(swarm);
                 obj.swarm = swarm(~[swarm.isDominated]);
                 obj.grid_size=grid_size;
                 obj.alpha=alpha;
@@ -25,7 +26,7 @@ classdef Repository
             end
         end
         function Grid = grid(obj)
-            C = cell2mat({obj.swarm.cost}');
+            C = vertcat(obj.swarm.cost);
             cmin = min(C,[],1);
             cmax = max(C,[],1);
             dc = cmax - cmin;
@@ -74,10 +75,9 @@ classdef Repository
             obj.swarm(sm)=[];
         end
         function obj = update(obj,swarm)
+            swarm = Particle.updateDomination(swarm);
             obj.swarm = [obj.swarm,swarm(~[swarm.isDominated])];
-            for i=1:length(obj.swarm)
-                obj.swarm(i) = obj.swarm(i).updateDomination(obj.swarm,i);
-            end
+            obj.swarm = Particle.updateDomination(obj.swarm);
             obj.swarm = obj.swarm(~[obj.swarm.isDominated]);
             obj.Grid=obj.grid();
             for i = 1:length(obj.swarm)
@@ -95,4 +95,3 @@ classdef Repository
         end
     end
 end
-
